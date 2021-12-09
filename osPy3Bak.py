@@ -9,6 +9,7 @@ from glanceclient import client as glance_client
 from keystoneclient.v3 import client as keystone_client
 
 import argparse
+import sys
 
 ## Function definitions
 def prune_os_snapshots(vm_name, os_images, os_snapshots, os_snapshot_prefix, os_snapshot_date, os_snapshot_retention, projectid):
@@ -34,7 +35,7 @@ def get_cinder_interface(args, projectid):
 def get_glance_interface(args, projectid):
     return glance_client.Client(2, session=set_session(args, projectid) )
 
-def get_keystone_interface(args, projectid): 
+def get_keystone_interface(args, projectid):
     return keystone_client.Client (interface='public', session=set_session(args, projectid) )
 
 def set_session(args, projectid):
@@ -65,7 +66,7 @@ args = parser.parse_args()
 # Verify command line options are not empty
 if not args.keystoneurl or not args.username or not args.password or not args.projectid:
     print ("--keystone-url, --username, --password & --project-id paramters can't be empty")
-    quit()
+    quit(1)
 
 print("osPy3Bak - Iterating all projects in cloud\r\n")
 
@@ -74,8 +75,9 @@ os_projects = get_keystone_interface(args, args.projectid).projects.list()
 
 # Default backup counters
 skipped = 0
-failed = 0 
+failed = 0
 success = 0
+
 
 for os_project in os_projects:
     try:
@@ -127,3 +129,12 @@ for os_project in os_projects:
 
 # Backup completed. Showing stats
 print ("Backup completed.", success, "Successful,", skipped, "Skipped,", failed, "Failed")
+
+# Set exit code based on errors
+
+if failed > 0:
+        sys.exit(1)
+if skipped > 0:
+        sys.exit(2)
+if skipped == 0 and failed == 0:
+        sys.exit(3)
