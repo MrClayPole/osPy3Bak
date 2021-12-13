@@ -62,7 +62,7 @@ for os_project in os_projects:
     try:
         os_snapshot_retention = os_project.osPy3Bak
     except:
-        print (os_project.name, "- Skipping as osPy3Bak property is missing from project")
+#        print (os_project.name, "- Skipping as osPy3Bak property is missing from project")
         continue
     try:
         os_snapshot_retention = int(os_snapshot_retention)
@@ -73,31 +73,34 @@ for os_project in os_projects:
         print (os_project.name, "- Skipping as osPy3Bak property is a negative number")
         continue
     print (os_project.name, " - Checking if quota changes are required")
-    os_volume = get_cinder_interface(args, os_project.id).volumes.list()
+    os_volumes = get_cinder_interface(args, os_project.id).volumes.list()
     os_volume_attachments = get_cinder_interface(args, os_project.id).attachments.list()
     os_snapshots = get_cinder_interface(args, os_project.id).volume_snapshots.list()
     os_quotas = (get_cinder_interface(args, os_project.id).quotas.get(os_project.id))
     os_snapshot_count = 0
     os_ospybak_snapshot_count = 0
     os_ospybak_snapshot_total_size = 0
-    os_snapshot_total_size = 0
+    os_snapshot_unmanaged_total_size = 0
+    os_ospybak_volume_total_size = 0
     os_ospybak_gb_per_snapshot = 0
     os_ospybak_volumes_per_snapshot = 0
+    for os_volume in os_volumes:
+        os_ospybak_volume_total_size = os_ospybak_volume_total_size + os_volume.size
     for os_snapshot in os_snapshots:
         if os_snapshot_prefix in os_snapshot.name:
             os_ospybak_snapshot_total_size = os_ospybak_snapshot_total_size + os_snapshot.size
             os_ospybak_snapshot_count = os_ospybak_snapshot_count + 1
         else:
-            os_snapshot_total_size = os_snapshot_total_size + os_snapshot.size
+            os_snapshot_unmanaged_total_size = os_snapshot_unmanaged_total_size + os_snapshot.size
             os_snapshot_count = os_snapshot_count + 1
-    #print (os_project.name, "-", os_snapshot_count + os_ospybak_snapshotcount, "disk snapshots,", os_snapshot_total_size, "unmanged GB,", os_ospybak_snapshot_total_size, "managed GB,", os_ospybak_snapshot_total_size + os_snapshot_total_size, "Total GB" )
+    #print (os_project.name, "-", os_snapshot_count + os_ospybak_snapshotcount, "disk snapshots,", os_snapshot_unmanaged_total_size, "unmanged GB,", os_ospybak_snapshot_total_size, "managed GB,", os_ospybak_snapshot_total_size + os_snapshot_unmanaged_total_size, "Total GB" )
     for os_volume_attachment in os_volume_attachments:
         os_ospybak_volumes_per_snapshot = os_ospybak_volumes_per_snapshot + 1
         os_ospybak_gb_per_snapshot = os_ospybak_gb_per_snapshot + get_cinder_interface(args, os_project.id).volumes.get(os_volume_attachment.volume_id).size
-    if os_snapshot_count + (os_ospybak_volumes_per_snapshot * os_snapshot_retention) > (os_quotas.snapshots):
-        print (" Volume snapshot count quota on needs to change from", os_quotas.snapshots, "to", os_snapshot_count + (os_ospybak_volumes_per_snapshot * os_snapshot_retention))
-    if os_snapshot_total_size + (os_ospybak_gb_per_snapshot * os_snapshot_retention) > (os_quotas.gigabytes):
-        print (" Volume size quota on needs to change from", os_quotas.gigabytes, "to", os_snapshot_total_size + (os_ospybak_gb_per_snapshot * os_snapshot_retention))
+    if os_snapshot_count + (os_ospybak_volumes_per_snapshot * (os_snapshot_retention +1)) > os_quotas.snapshots:
+        print (" Volume snapshot count quota on needs to change from", os_quotas.snapshots, "to", os_snapshot_count + (os_ospybak_volumes_per_snapshot * (os_snapshot_retention + 1)))
+    if os_snapshot_unmanaged_total_size + os_ospybak_volume_total_size + (os_ospybak_gb_per_snapshot * (os_snapshot_retention + 1)) > os_quotas.gigabytes:
+        print (" Volume size quota on needs to change from", os_quotas.gigabytes, "to", os_snapshot_unmanaged_total_size + os_ospybak_volume_total_size + (os_ospybak_gb_per_snapshot * (os_snapshot_retention + 1)))
 
 # Backup completed. Showing stats
 print ("Quota audit completed.")
