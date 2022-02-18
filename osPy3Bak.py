@@ -17,14 +17,14 @@ def prune_os_snapshots(vm_name, os_images, os_snapshots, os_snapshot_prefix, os_
         if os_snapshot.name.startswith("snapshot for " + vm_name + os_snapshot_prefix):
             if datetime.date(os_snapshot_date) - timedelta(days=os_snapshot_retention) >= datetime.strptime(os_snapshot.name[-10:], "%Y-%m-%d").date():
                 get_cinder_interface(args, projectid).volume_snapshots.delete(os_snapshot.id)
-                print (" DELETED: ", os_snapshot.name)
+                print ("     DELETED: ", os_snapshot.name)
 
 def prune_os_images(vm_name, os_images, os_snapshot_prefix, os_snapshot_date, os_snapshot_retention, projectid):
     for os_image in os_images:
         if os_image.name.startswith(vm_name + os_snapshot_prefix):
             if datetime.date(os_snapshot_date) - timedelta(days=os_snapshot_retention) >= datetime.strptime(os_image.name[-10:], "%Y-%m-%d").date():
                 get_glance_interface(args, projectid).images.delete(os_image.id)
-                print (" DELETED: Image", os_image.name)
+                print ("     DELETED: image", os_image.name)
 
 def get_nova_interface(args, projectid):
     return nova_client.Client(2.1, session=set_session(args, projectid) )
@@ -83,7 +83,7 @@ for os_project in os_projects:
     try:
         os_snapshot_retention = os_project.osPy3Bak
     except:
-        print (os_project.name, "- Skipping as osPy3Bak property is missing from project")
+#        print (os_project.name, "- Skipping as osPy3Bak property is missing from project")
         continue
     try:
         os_snapshot_retention = int(os_snapshot_retention)
@@ -93,22 +93,24 @@ for os_project in os_projects:
     if os_snapshot_retention < 0:
         print (os_project.name, "- Skipping as osPy3Bak property is a negative number")
         continue
-    print (os_project.name, " - Snapshotting all VMs")
-    os_images = get_nova_interface(args, os_project.id).glance.list()
+    print (os_project.name, " - Snapshotting all VMs (keep ", os_snapshot_retention, "snapshots )")
+#    os_images = get_glance_interface(args, os_project.id).images.list()
     os_snapshots = get_cinder_interface(args, os_project.id).volume_snapshots.list()
     os_vms = get_nova_interface(args, os_project.id).servers.list()
     for os_vm in os_vms:
+        os_images = get_glance_interface(args, os_project.id).images.list()
+
         if os_vm.status == "SHELVED_OFFLOADED" and os_snapshot_retention > 0:
-            print (" SKIPPED:", os_vm.name, "is shelved. Snapshotting not permitted")
+            print ("     SKIPPED:", os_vm.name, "is shelved. Snapshotting not permitted")
             skipped += 1
             continue
         if os_vm.name + os_snapshot_prefix + os_snapshot_date.strftime("%Y-%m-%d") in str(os_images) and os_snapshot_retention > 0:
-            print(" SKIPPED:", os_vm.name, "already has a image for date", os_snapshot_date.strftime("%Y-%m-%d"))
+            print("      SKIPPED:", os_vm.name, "already has a image for date", os_snapshot_date.strftime("%Y-%m-%d"))
             skipped += 1
             continue
         for os_snapshot in os_snapshots:
             if ("snapshot for " + os_vm.name + os_snapshot_prefix + os_snapshot_date.strftime("%Y-%m-%d")) in str(os_snapshot.name) and os_snapshot_retention > 0:
-                print(" SKIPPED:", os_vm.name, "already has volume sanpshot(s) for date", os_snapshot_date.strftime("%Y-%m-%d"))
+                print("     SKIPPED:", os_vm.name, "already has volume sanpshot(s) for date", os_snapshot_date.strftime("%Y-%m-%d"))
                 skipped += 1
                 os_snapshot_continue = 1
                 break
@@ -119,10 +121,10 @@ for os_project in os_projects:
             try:
                 get_nova_interface(args, os_project.id).servers.create_image(os_vm.id, os_vm.name + os_snapshot_prefix + os_snapshot_date.strftime("%Y-%m-%d"))
             except Exception as e:
-                print (" FAILED:", os_vm.name, ":", e)
+                print ("      FAILED:", os_vm.name, ":", e)
                 failed += 1
                 continue
-            print (" CREATED: image of", os_vm.name, "backup dated", os_snapshot_date.strftime("%Y-%m-%d"))
+            print ("     CREATED: image of", os_vm.name, "backup dated", os_snapshot_date.strftime("%Y-%m-%d"))
             success += 1
         prune_os_images(os_vm.name, os_images, os_snapshot_prefix, os_snapshot_date, os_snapshot_retention, os_project.id)
         prune_os_snapshots(os_vm.name, os_images, os_snapshots, os_snapshot_prefix, os_snapshot_date, os_snapshot_retention, os_project.id)
