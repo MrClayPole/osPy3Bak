@@ -77,6 +77,7 @@ os_projects = get_keystone_interface(args, args.projectid).projects.list()
 skipped = 0
 failed = 0
 success = 0
+shelved = 0
 
 
 for os_project in os_projects:
@@ -102,7 +103,7 @@ for os_project in os_projects:
 
         if os_vm.status == "SHELVED_OFFLOADED" and os_snapshot_retention > 0:
             print ("     SKIPPED:", os_vm.name, "is shelved. Snapshotting not permitted")
-            skipped += 1
+            shelved += 1
             continue
         if os_vm.name + os_snapshot_prefix + os_snapshot_date.strftime("%Y-%m-%d") in str(os_images) and os_snapshot_retention > 0:
             print("      SKIPPED:", os_vm.name, "already has a image for date", os_snapshot_date.strftime("%Y-%m-%d"))
@@ -130,7 +131,7 @@ for os_project in os_projects:
         prune_os_snapshots(os_vm.name, os_images, os_snapshots, os_snapshot_prefix, os_snapshot_date, os_snapshot_retention, os_project.id)
 
 # Backup completed. Showing stats
-print ("Backup completed.", success, "Successful,", skipped, "Skipped,", failed, "Failed")
+print ("Backup completed.", success, "Successful,", shelved, "Shelved", skipped, "Skipped,", failed, "Failed")
 
 # Set exit code based on errors
 
