@@ -131,7 +131,7 @@ for os_project in os_projects:
         prune_os_snapshots(os_vm.name, os_images, os_snapshots, os_snapshot_prefix, os_snapshot_date, os_snapshot_retention, os_project.id)
 
 # Backup completed. Showing stats
-print ("Backup completed.", success, "Successful,", shelved, "Shelved", skipped, "Skipped,", failed, "Failed")
+print ("Backup completed.", success, "Successful,", shelved, "Shelved,", skipped, "Skipped,", failed, "Failed")
 
 # Set exit code based on errors
 
