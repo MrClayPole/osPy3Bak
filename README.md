@@ -1,5 +1,5 @@
 # Openstack_snapshot_scripts
-Python scripts to walk all Openstack projects and snanpshot all VMs in that project and then removes any snapshots/images past a configure number of days.
+Python scripts to walk all Openstack projects and snapshot all VMs in that project and then removes any snapshots/images past a configure number of days.
 
 Which projects get backed up and their retention is set by assigning a number to the property "osPyBak" against a project.
 
